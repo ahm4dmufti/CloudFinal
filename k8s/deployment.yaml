@@ -1,0 +1,35 @@
+# Kubernetes Deployment for the CloudScale application
+# Manages the rollout of app pods across the cluster
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudscale-app         # Deployment name — must match selector labels below
+  labels:
+    app: cloudscale-app
+spec:
+  replicas: 3                  # Run 3 pod replicas for high availability
+  selector:
+    matchLabels:
+      app: cloudscale-app      # Selects pods owned by this Deployment
+  template:
+    metadata:
+      labels:
+        app: cloudscale-app    # Must match spec.selector.matchLabels above
+    spec:
+      containers:
+        - name: cloudscale-app
+          image: cloudscaleahmadacr.azurecr.io/cloudscale-app:v1   # Image pulled from Azure Container Registry
+          ports:
+            - containerPort: 8080   # Port the app listens on inside the container
+          readinessProbe:           # Gates traffic: pod only receives requests once this passes
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5  # Wait 5s after container start before first check
+            periodSeconds: 10       # Re-check every 10s
+          livenessProbe:            # Restarts the container if the app becomes unresponsive
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10 # Longer delay than readiness to avoid restart loops on startup
+            periodSeconds: 15       # Re-check every 15s
